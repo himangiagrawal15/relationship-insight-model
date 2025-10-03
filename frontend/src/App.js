@@ -95,7 +95,7 @@ const Dashboard = () => {
           <div className="text-center mb-12">
             <h1 className="text-6xl font-bold text-white mb-4 flex items-center justify-center gap-4">
               <Heart className="text-pink-300" size={60} />
-              Relationship Insights
+              Happy Boyfriends Day  lover boy
             </h1>
             <p className="text-pink-100 text-xl">Discover the story of your relationship through AI</p>
           </div>
@@ -354,63 +354,185 @@ const Dashboard = () => {
           </ResponsiveContainer>
         </div>
 
-        {/* Fights */}
-        {fights.length > 0 && (
-          <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 mb-8 shadow-2xl border border-white/20">
-            <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
-              <AlertTriangle size={28} className="text-red-400" />
-              Conflict Analysis
-            </h2>
-            <div className="space-y-4">
-              {fights.map((fight, idx) => (
-                <div key={idx} className="bg-red-500/20 border border-red-400/30 rounded-xl p-6">
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="text-white font-semibold">
-                      {new Date(fight.start_time).toLocaleDateString()}
+        
+       {/* Monthly Summaries */}
+<div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 shadow-2xl border border-white/20">
+  <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+    <Calendar size={28} />
+    Monthly Relationship Journey
+  </h2>
+  <div className="space-y-8">
+    {summaries.map((summary, idx) => (
+      <div key={idx} className="bg-white/10 rounded-2xl p-6 border border-white/20">
+        {/* Month Header */}
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-2xl font-bold text-white">{summary.period}</h3>
+          <div className="text-pink-200 text-sm">
+            {summary.message_count} messages
+          </div>
+        </div>
+
+       {/* AI Summary */}
+        <div className="bg-purple-500/20 rounded-xl p-4 mb-4">
+          <div className="flex items-start gap-3">
+            <Sparkles size={20} className="text-purple-300 mt-1 flex-shrink-0" />
+            <div className="text-white leading-relaxed w-full">
+              {summary.ai_summary.split('\n').map((paragraph, i) => {
+                if (!paragraph.trim()) return null;
+                
+                // Handle numbered lists (1. 2. 3.) in separate boxes
+                const numberedMatch = paragraph.trim().match(/^(\d+)\.\s*\*\*([^*]+)\*\*:?\s*(.*)/);
+                if (numberedMatch) {
+                  const [, number, title, content] = numberedMatch;
+                  const colors = [
+                    'bg-gradient-to-r from-pink-500/30 to-purple-500/30 border-pink-400/40',
+                    'bg-gradient-to-r from-blue-500/30 to-indigo-500/30 border-blue-400/40',
+                    'bg-gradient-to-r from-green-500/30 to-emerald-500/30 border-green-400/40',
+                    'bg-gradient-to-r from-orange-500/30 to-red-500/30 border-orange-400/40'
+                  ];
+                  const colorClass = colors[(parseInt(number) - 1) % colors.length];
+                  
+                  return (
+                    <div key={i} className={`${colorClass} border rounded-xl p-4 mb-3`}>
+                      <div className="flex items-start gap-3">
+                        <div className="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">
+                          <span className="text-white font-bold text-sm">{number}</span>
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="text-white font-bold text-lg mb-2">{title}</h4>
+                          <p className="text-white/90 text-sm leading-relaxed">{content}</p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex gap-1">
-                      {[...Array(fight.severity)].map((_, i) => (
-                        <span key={i} className="text-red-400">🔥</span>
-                      ))}
+                  );
+                }
+                
+                // Handle regular numbered items without bold title
+                if (/^\d+\./.test(paragraph.trim())) {
+                  const number = paragraph.match(/^\d+\./)[0];
+                  const content = paragraph.replace(/^\d+\.\s*/, '');
+                  const colors = [
+                    'bg-gradient-to-r from-pink-500/30 to-purple-500/30 border-pink-400/40',
+                    'bg-gradient-to-r from-blue-500/30 to-indigo-500/30 border-blue-400/40',
+                    'bg-gradient-to-r from-green-500/30 to-emerald-500/30 border-green-400/40',
+                    'bg-gradient-to-r from-orange-500/30 to-red-500/30 border-orange-400/40'
+                  ];
+                  const colorClass = colors[(parseInt(number) - 1) % colors.length];
+                  
+                  return (
+                    <div key={i} className={`${colorClass} border rounded-xl p-4 mb-3`}>
+                      <div className="flex items-start gap-3">
+                        <div className="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">
+                          <span className="text-white font-bold text-sm">{number.replace('.', '')}</span>
+                        </div>
+                        <p className="text-white/90 text-sm leading-relaxed flex-1">{content}</p>
+                      </div>
                     </div>
+                  );
+                }
+                
+                // Handle bold text with **text** or ***text***
+                let formattedText = paragraph;
+                
+                // Replace ***text*** with bold
+                formattedText = formattedText.split(/(\*\*\*[^*]+\*\*\*)/).map((part, idx) => {
+                  if ((part.startsWith('***') && part.endsWith('***'))) {
+                    return <strong key={idx} className="text-pink-300 font-bold">{part.slice(3, -3)}</strong>;
+                  }
+                  return part;
+                });
+                
+                // Replace **text** with bold
+                formattedText = formattedText.flat().map((part, idx) => {
+                  if (typeof part === 'string') {
+                    return part.split(/(\*\*[^*]+\*\*)/).map((subpart, subidx) => {
+                      if (subpart.startsWith('**') && subpart.endsWith('**')) {
+                        return <strong key={`${idx}-${subidx}`} className="text-purple-200 font-semibold">{subpart.slice(2, -2)}</strong>;
+                      }
+                      return subpart;
+                    });
+                  }
+                  return part;
+                }).flat();
+                
+                return <p key={i} className="mb-3 text-sm">{formattedText}</p>;
+              })}
+            </div>
+          </div>
+        </div>
+        {/* Stats Bar */}
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          <div className="bg-green-500/20 rounded-lg p-3 text-center">
+            <div className="text-2xl font-bold text-green-300">
+              {summary.sentiment_stats.positive}
+            </div>
+            <div className="text-xs text-green-200">Happy</div>
+          </div>
+          <div className="bg-pink-500/20 rounded-lg p-3 text-center">
+            <div className="text-2xl font-bold text-pink-300">
+              {summary.sentiment_stats.love}
+            </div>
+            <div className="text-xs text-pink-200">Love</div>
+          </div>
+          <div className="bg-red-500/20 rounded-lg p-3 text-center">
+            <div className="text-2xl font-bold text-red-300">
+              {summary.fights?.length || 0}
+            </div>
+            <div className="text-xs text-red-200">Conflicts</div>
+          </div>
+        </div>
+
+        {/* Cute Moments */}
+        {summary.cute_moments && summary.cute_moments.length > 0 && (
+          <div className="mb-4">
+            <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+              <Heart size={18} className="text-pink-400" />
+              Cute Moments
+            </h4>
+            <div className="space-y-2">
+              {summary.cute_moments.map((moment, i) => (
+                <div key={i} className="bg-pink-500/10 border border-pink-400/20 rounded-lg p-3">
+                  <div className="flex justify-between items-start mb-1">
+                    <span className="text-pink-300 font-semibold text-sm">
+                      {moment.sender}
+                    </span>
+                    <span className="text-pink-200 text-xs">{moment.date}</span>
                   </div>
-                  <p className="text-pink-100 mb-2">
-                    <strong>Trigger:</strong> {fight.trigger_phrase}
-                  </p>
-                  <p className="text-white text-sm bg-white/10 p-4 rounded-lg">{fight.ai_summary}</p>
+                  <p className="text-white text-sm">{moment.content}</p>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* Monthly Summaries */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 shadow-2xl border border-white/20">
-          <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
-            <Sparkles size={28} />
-            Relationship Timeline
-          </h2>
-          <div className="space-y-6">
-            {summaries.map((summary, idx) => (
-              <div key={idx} className="bg-white/10 rounded-xl p-6">
-                <h3 className="text-xl font-bold text-white mb-3">{summary.period}</h3>
-                <p className="text-pink-100 mb-4">{summary.summary_text}</p>
-                {summary.happy_moments && summary.happy_moments.length > 0 && (
-                  <div>
-                    <h4 className="text-white font-semibold mb-2">💖 Happy Moments:</h4>
-                    <ul className="space-y-2">
-                      {summary.happy_moments.slice(0, 3).map((moment, i) => (
-                        <li key={i} className="text-sm text-pink-200 bg-white/5 p-3 rounded-lg">
-                          <strong>{moment.sender}:</strong> {moment.content}...
-                        </li>
+        {/* Fights */}
+        {summary.fights && summary.fights.length > 0 && (
+          <div>
+            <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+              <AlertTriangle size={18} className="text-red-400" />
+              Conflicts This Month
+            </h4>
+            <div className="space-y-2">
+              {summary.fights.map((fight, i) => (
+                <div key={i} className="bg-red-500/10 border border-red-400/20 rounded-lg p-3">
+                  <div className="flex justify-between items-start mb-1">
+                    <span className="text-red-300 text-xs">{fight.date}</span>
+                    <div className="flex gap-1">
+                      {[...Array(fight.severity)].map((_, idx) => (
+                        <span key={idx} className="text-red-400 text-xs">🔥</span>
                       ))}
-                    </ul>
+                    </div>
                   </div>
-                )}
-              </div>
-            ))}
+                  <p className="text-white text-sm">{fight.trigger}</p>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
+      </div>
+    ))}
+  </div>
+</div>
       </div>
     </div>
   );

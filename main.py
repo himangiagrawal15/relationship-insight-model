@@ -33,7 +33,7 @@ sentiment_analyzer = pipeline("sentiment-analysis", model="distilbert-base-uncas
 # NEW: Initialize Gemini (set your API key as environment variable)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "your-api-key-here")
 genai.configure(api_key=GEMINI_API_KEY)
-gemini_model = genai.GenerativeModel('gemini-pro')
+gemini_model = genai.GenerativeModel('gemini-2.5-flash')
 
 print("Models loaded!")
 
@@ -68,6 +68,7 @@ def parse_chat_text(chat_text: str):
     messages = []
     
     patterns = [
+        r'(\d{1,2}/\d{1,2}/\d{2},\s+\d{1,2}:\d{2}\s+[AP]M)\s+-\s+([^:]+):\s*(.+)',
         r'(\d{1,2}/\d{1,2}/\d{2,4},?\s+\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)?)\s*-\s*([^:]+):\s*(.+)',
         r'\[(\d{1,2}/\d{1,2}/\d{2,4},?\s+\d{1,2}:\d{2}:\d{2}\s*(?:AM|PM|am|pm)?)\]\s*([^:]+):\s*(.+)',
         r'(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\s*-\s*([^:]+):\s*(.+)',
@@ -85,7 +86,7 @@ def parse_chat_text(chat_text: str):
                 timestamp_str, sender, content = match.groups()
                 
                 try:
-                    for fmt in ['%m/%d/%y, %I:%M %p', '%m/%d/%Y, %I:%M %p', '%d/%m/%y, %H:%M', 
+                    for fmt in ['%m/%d/%y, %I:%M %p', '%m/%d/%y, %I:%M %p', '%m/%d/%Y, %I:%M %p', '%d/%m/%y, %H:%M', 
                                '%Y-%m-%d %H:%M:%S', '%m/%d/%y, %H:%M']:
                         try:
                             timestamp = datetime.strptime(timestamp_str.strip(), fmt)
@@ -106,6 +107,65 @@ def parse_chat_text(chat_text: str):
                 break
     
     return messages
+from fastapi import File, UploadFile
+import pandas as pd
+import io
+
+@app.post("/api/conversations/upload_csv/")
+async def upload_csv(file: UploadFile = File(...), title: str = "My Conversation"):
+    try:
+        # Read CSV file
+        contents = await file.read()
+        df = pd.read_csv(io.StringIO(contents.decode('utf-8')))
+        
+        # Expected columns: timestamp, sender, message
+        # Adjust column names based on your CSV format
+        required_cols = ['timestamp', 'sender', 'message']
+        
+        if not all(col in df.columns for col in required_cols):
+            raise HTTPException(
+                status_code=400, 
+                detail=f"CSV must contain columns: {required_cols}"
+            )
+        
+        # Convert to messages format
+        messages = []
+        for _, row in df.iterrows():
+            try:
+                timestamp = pd.to_datetime(row['timestamp'])
+                messages.append({
+                    'timestamp': timestamp,
+                    'sender': str(row['sender']).strip(),
+                    'content': str(row['message']).strip()
+                })
+            except Exception as e:
+                continue  # Skip malformed rows
+        
+        if len(messages) < 2:
+            raise HTTPException(status_code=400, detail="Need at least 2 valid messages")
+        
+        # Get unique senders
+        senders = list(set(msg['sender'] for msg in messages))
+        if len(senders) < 2:
+            senders.append("Person 2")
+        
+        # Create conversation
+        global conversation_counter
+        conversation_counter += 1
+        conv_id = conversation_counter
+        
+        conversations_db[conv_id] = {
+            'id': conv_id,
+            'title': title,
+            'person1_name': senders[0],
+            'person2_name': senders[1],
+            'messages': messages
+        }
+        
+        return {'conversation_id': conv_id, 'message_count': len(messages)}
+    
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 # ADD this new endpoint:
 from fastapi import BackgroundTasks
 
@@ -177,40 +237,17 @@ def detect_sentiment(text: str):
     return sentiment, score
 
 # OPTIMIZED: Only call Gemini for significant fights
-def analyze_fight_with_gemini(fight_messages, fight_id):
-    """Use Gemini SPARINGLY - only for major conflicts"""
-    # Check cache first
-    cache_key = f"fight_{fight_id}"
-    if cache_key in gemini_cache:
-        return gemini_cache[cache_key]
-    
-    try:
-        # Only analyze first 8 messages to save tokens
-        context = "\n".join([f"{m['sender']}: {m['content'][:80]}" for m in fight_messages[:8]])
-        
-        prompt = f"""Analyze this relationship conflict briefly:
-
-{context}
-
-In 3 short sentences provide:
-1. Root cause
-2. Pattern observed  
-3. Constructive advice
-
-Keep under 100 words."""
-
-        response = gemini_model.generate_content(prompt)
-        result = response.text
-        
-        # Cache the response
-        gemini_cache[cache_key] = result
-        return result
-    except Exception as e:
-        print(f"Gemini error: {e}")
-        return "Conflict detected. Open communication helps resolve tensions."
+def analyze_fight_simple(fight_messages, negative_count):
+    """Simple rule-based fight analysis - NO GEMINI"""
+    if negative_count >= 4:
+        return "Intense disagreement detected. Take time to cool down and revisit the conversation with empathy."
+    elif negative_count >= 3:
+        return "Moderate conflict. Try to understand each other's perspective and find common ground."
+    else:
+        return "Minor disagreement. Open communication can help clear misunderstandings."
 
 def detect_fights(messages):
-    """Enhanced fight detection - only use Gemini for severe conflicts"""
+    """Enhanced fight detection - NO GEMINI"""
     fights = []
     
     fight_keywords = [
@@ -220,7 +257,6 @@ def detect_fights(messages):
     ]
     
     i = 0
-    fight_counter = 0
     while i < len(messages):
         msg = messages[i]
         content_lower = msg['content'].lower()
@@ -236,20 +272,11 @@ def detect_fights(messages):
             negative_count = sum(1 for m in fight_messages if m.get('sentiment') == 'negative')
             
             if negative_count >= 2:
-                fight_counter += 1
-                
-                # OPTIMIZATION: Only use Gemini for severe fights (severity >= 3)
-                if negative_count >= 3:
-                    ai_summary = analyze_fight_with_gemini(fight_messages, fight_counter)
-                else:
-                    # Use simple summary for minor conflicts
-                    ai_summary = "Minor disagreement. Communication can help clear misunderstandings."
-                
                 fights.append({
                     'start_time': msg['timestamp'].isoformat(),
                     'severity': min(negative_count, 5),
                     'trigger_phrase': msg['content'][:100],
-                    'ai_summary': ai_summary
+                    'ai_summary': analyze_fight_simple(fight_messages, negative_count)  # Simple, no Gemini
                 })
                 
                 i = end_idx
@@ -320,57 +347,35 @@ def detect_love_languages(messages, person1, person2):
 
 # OPTIMIZED: Smart sampling for Gemini insights
 def generate_relationship_insights(messages, person1, person2, conv_id):
-    """Generate insights using STRATEGIC sampling"""
-    # Check cache first
-    cache_key = f"insights_{conv_id}"
-    if cache_key in gemini_cache:
-        return gemini_cache[cache_key]
+    """Generate insights WITHOUT Gemini - simple stats-based"""
+    total_msgs = len(messages)
     
-    try:
-        # SMART SAMPLING: Get diverse message samples
-        total_msgs = len(messages)
-        
-        # Take messages from different periods
-        sample_size = min(30, total_msgs)  # Max 30 messages
-        
-        # Get beginning, middle, end samples
-        beginning = messages[:10]
-        middle_idx = total_msgs // 2
-        middle = messages[middle_idx:middle_idx+10]
-        end = messages[-10:]
-        
-        sampled = beginning + middle + end
-        sampled = sampled[:sample_size]  # Limit to 30
-        
-        # Include only positive and negative extremes
-        sampled = [m for m in sampled if m.get('sentiment') in ['love', 'positive', 'negative']][:20]
-        
-        context = "\n".join([f"{m['sender']}: {m['content'][:60]}" for m in sampled])
-        
-        prompt = f"""Based on {total_msgs} messages between {person1} and {person2}, here's a sample:
+    # Count sentiments
+    positive = sum(1 for m in messages if m.get('sentiment') in ['positive', 'love', 'happy', 'cute'])
+    negative = sum(1 for m in messages if m.get('sentiment') in ['negative', 'sad'])
+    
+    positive_pct = round((positive / total_msgs) * 100, 1)
+    negative_pct = round((negative / total_msgs) * 100, 1)
+    
+    # Generate simple insight
+    if positive_pct > 60:
+        tone = "predominantly positive and affectionate"
+        health = "Your relationship shows strong emotional connection."
+    elif positive_pct > 40:
+        tone = "balanced with both positive and challenging moments"
+        health = "Your relationship has healthy ups and downs."
+    else:
+        tone = "facing some challenges"
+        health = "Consider focusing on positive communication."
+    
+    return f"Analyzed {total_msgs} messages between {person1} and {person2}. Your conversations are {tone} ({positive_pct}% positive, {negative_pct}% negative). {health} The variety in your topics shows a well-rounded relationship."
 
-{context}
-
-Provide brief insights (under 150 words):
-1. Communication style (2 sentences)
-2. Relationship strength (2 sentences)  
-3. Growth suggestion (1 sentence)"""
-
-        response = gemini_model.generate_content(prompt)
-        result = response.text
-        
-        # Cache it
-        gemini_cache[cache_key] = result
-        return result
-    except Exception as e:
-        print(f"Gemini error: {e}")
-        return f"Analyzed {len(messages)} messages between {person1} and {person2}. Your conversations show a mix of emotions and topics, reflecting a dynamic relationship."
-
-def generate_monthly_summaries(messages):
-    """Enhanced monthly summaries WITHOUT Gemini (too expensive)"""
+def generate_monthly_summaries(messages, person1, person2):
+    """Generate detailed monthly summaries with top conflicts and moments"""
     if not messages:
         return []
     
+    # Group by month
     monthly_groups = defaultdict(list)
     for msg in messages:
         month_key = msg['timestamp'].strftime('%Y-%m')
@@ -378,42 +383,69 @@ def generate_monthly_summaries(messages):
     
     summaries = []
     
-    for month, msgs in sorted(monthly_groups.items()):
-        happy_moments = [
-            {'sender': m['sender'], 'content': m['content'][:100], 'timestamp': m['timestamp'].isoformat()}
-            for m in msgs 
-            if m.get('sentiment') in ['positive', 'love', 'happy', 'cute']
-        ]
-        happy_moments.sort(key=lambda x: x['timestamp'], reverse=True)
-        
-        positive_count = sum(1 for m in msgs if m.get('sentiment') in ['positive', 'love', 'happy'])
-        negative_count = sum(1 for m in msgs if m.get('sentiment') == 'negative')
+    for month_idx, (month, msgs) in enumerate(sorted(monthly_groups.items())):
+        # Count stats
+        positive_count = sum(1 for m in msgs if m.get('sentiment') in ['positive', 'happy'])
+        negative_count = sum(1 for m in msgs if m.get('sentiment') in ['negative', 'sad'])
         love_count = sum(1 for m in msgs if m.get('sentiment') == 'love')
+        cute_count = sum(1 for m in msgs if m.get('sentiment') == 'cute')
         
-        summary_text = f"This month had {len(msgs)} messages. "
-        if love_count > 10:
-            summary_text += f"Lots of love with {love_count} affectionate moments! 💕 "
-        if positive_count > negative_count * 2:
-            summary_text += f"Mostly positive vibes! 😊"
-        elif negative_count > positive_count:
-            summary_text += f"Some challenges, but you're working through them together. 💪"
-        else:
-            summary_text += f"A balanced mix of emotions. 🌈"
+        # Extract top moments for display
+        cute_moments = [
+            m for m in msgs if m.get('sentiment') == 'cute' or
+            any(word in m['content'].lower() for word in ['cute', 'adorable', 'aww'])
+        ]
+        cute_moments.sort(key=lambda x: x.get('score', 0), reverse=True)
+        top_cute_display = [
+            {
+                'sender': m['sender'], 
+                'content': m['content'][:150], 
+                'timestamp': m['timestamp'].isoformat(),
+                'date': m['timestamp'].strftime('%b %d')
+            }
+            for m in cute_moments[:3]
+        ]
+        
+        love_moments = [
+            m for m in msgs if m.get('sentiment') == 'love'
+        ]
+        love_moments.sort(key=lambda x: x.get('score', 0), reverse=True)
+        top_love_display = [
+            {
+                'sender': m['sender'], 
+                'content': m['content'][:150], 
+                'timestamp': m['timestamp'].isoformat(),
+                'date': m['timestamp'].strftime('%b %d')
+            }
+            for m in love_moments[:3]
+        ]
+        
+        # Detect conflicts
+        fight_count = sum(1 for m in msgs if m.get('sentiment') == 'negative' and m.get('score', 0) > 0.75)
+        
+        # SINGLE Gemini call per month for complete analysis
+        ai_summary = generate_monthly_ai_summary(
+            msgs, month, person1, person2, 
+            positive_count, negative_count, love_count, 
+            cute_count, fight_count
+        )
         
         summaries.append({
             'period': datetime.strptime(month, '%Y-%m').strftime('%B %Y'),
-            'summary_text': summary_text,
-            'happy_moments': happy_moments[:5],
             'message_count': len(msgs),
-            'sentiment_breakdown': {
+            'cute_moments': top_cute_display,
+            'love_moments': top_love_display,
+            'sentiment_stats': {
                 'positive': positive_count,
                 'negative': negative_count,
-                'love': love_count
-            }
+                'love': love_count,
+                'cute': cute_count,
+                'total': len(msgs)
+            },
+            'ai_summary': ai_summary  # Includes analysis of top 3 conflicts + top 3 cute + top 3 love
         })
     
     return summaries
-
 # API Endpoints
 @app.get("/")
 def root():
@@ -492,14 +524,105 @@ def analyze_conversation(conv_id: int):
             
             # Apply emotion detection
             text_lower = msg['content'].lower()
-            if any(word in text_lower for word in ['love', '❤', '😍', '💕']):
+            if any(word in text_lower for word in ['love', '❤', '😍', '💕', 'pretty', 'mine', 'baby']):
                 sentiment = 'love'
             
             msg['sentiment'] = sentiment
             msg['score'] = score
     
     return {'status': 'analyzed', 'messages_processed': len(messages)}
+def generate_monthly_ai_summary(msgs, month, person1, person2, 
+                               pos_count, neg_count, love_count, 
+                               cute_count, fight_count):
+    """Generate AI summary for top 3 conflicts + top 3 cute/love moments per month"""
+    
+    # Check cache
+    cache_key = f"month_{month}_{len(msgs)}"
+    if cache_key in gemini_cache:
+        return gemini_cache[cache_key]
+    
+    try:
+        # 1. Extract TOP 3 CONFLICTS
+        conflict_messages = []
+        fight_keywords = ['always', 'never', 'angry', 'upset', 'annoyed', 'frustrated', 
+                         'why do you', "you don't", 'tired of', 'whatever', 'fine', 'stop']
+        
+        for msg in msgs:
+            content_lower = msg['content'].lower()
+            if (any(kw in content_lower for kw in fight_keywords) or 
+                msg.get('sentiment') == 'negative' and msg.get('score', 0) > 0.75):
+                conflict_messages.append(msg)
+        
+        # Take top 3 most negative conflicts
+        conflict_messages.sort(key=lambda x: x.get('score', 0), reverse=True)
+        top_conflicts = conflict_messages[:3]
+        
+        # 2. Extract TOP 3 CUTE MOMENTS
+        cute_messages = [
+            m for m in msgs 
+            if m.get('sentiment') == 'cute' or 
+            any(word in m['content'].lower() for word in ['cute', 'adorable', 'aww', 'sweet'])
+        ]
+        cute_messages.sort(key=lambda x: x.get('score', 0), reverse=True)
+        top_cute = cute_messages[:3]
+        
+        # 3. Extract TOP 3 LOVE MOMENTS
+        love_messages = [
+            m for m in msgs 
+            if m.get('sentiment') == 'love' or
+            any(word in m['content'].lower() for word in ['love you', 'miss you', 'baby', 'darling'])
+        ]
+        love_messages.sort(key=lambda x: x.get('score', 0), reverse=True)
+        top_love = love_messages[:3]
+        
+        # 4. Build context for Gemini
+        conflict_context = "\n".join([
+            f"[{m['timestamp'].strftime('%b %d')}] {m['sender']}: {m['content'][:120]}" 
+            for m in top_conflicts
+        ]) if top_conflicts else "No major conflicts this month"
+        
+        cute_context = "\n".join([
+            f"[{m['timestamp'].strftime('%b %d')}] {m['sender']}: {m['content'][:120]}" 
+            for m in top_cute
+        ]) if top_cute else "No standout cute moments"
+        
+        love_context = "\n".join([
+            f"[{m['timestamp'].strftime('%b %d')}] {m['sender']}: {m['content'][:120]}" 
+            for m in top_love
+        ]) if top_love else "No explicit love expressions"
+        
+        month_name = datetime.strptime(month, '%Y-%m').strftime('%B %Y')
+        
+        prompt = f"""Analyze {person1} and {person2}'s relationship in {month_name}:
 
+**TOP 3 CONFLICTS:**
+{conflict_context}
+
+**TOP 3 CUTE MOMENTS:**
+{cute_context}
+
+**TOP 3 LOVE MOMENTS:**
+{love_context}
+
+Provide a warm, empathetic analysis with:
+1. **Conflicts:** Briefly explain what caused each of the 3 conflicts and how to resolve them (2-3 sentences each)
+2. **Cute Moments:** Highlight what made these 3 moments adorable (1-2 sentences each)
+3. **Love Moments:** Explain the depth of affection shown in these 3 exchanges (1-2 sentences each)
+4. **Monthly Vibe:** Overall emotional tone and relationship health (2-3 sentences)
+
+Keep under 250 words, warm tone."""
+
+        response = gemini_model.generate_content(prompt)
+        result = response.text
+        
+        # Cache it
+        gemini_cache[cache_key] = result
+        return result
+        
+    except Exception as e:
+        print(f"Gemini error for monthly summary: {e}")
+        # Fallback
+        return f"In {datetime.strptime(month, '%Y-%m').strftime('%B %Y')}, you exchanged {len(msgs)} messages with {pos_count} positive moments and {neg_count} challenging ones."
 @app.get("/api/conversations/{conv_id}/dashboard_data/")
 def get_dashboard_data(conv_id: int):
     if conv_id not in conversations_db:
@@ -526,7 +649,7 @@ def get_dashboard_data(conv_id: int):
     fights = detect_fights(messages)
     topics = detect_topics(messages)
     love_languages = detect_love_languages(messages, conv['person1_name'], conv['person2_name'])
-    summaries = generate_monthly_summaries(messages)
+    summaries = generate_monthly_summaries(messages, conv['person1_name'], conv['person2_name'])
     
     # Only call Gemini ONCE for overall insights
     relationship_insights = generate_relationship_insights(
