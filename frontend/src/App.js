@@ -3,6 +3,167 @@ import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, RadarChart, Radar,
 import { Heart, MessageCircle, TrendingUp, AlertTriangle, Calendar, Upload, Sparkles, Brain, Smile, Frown } from 'lucide-react';
 
 const API_BASE = 'http://localhost:8000/api';
+// Cute floating character animation component
+const FloatingCharacter = () => {
+  return (
+    <div className="fixed bottom-8 right-8 pointer-events-none z-50 animate-float">
+      <div className="relative w-32 h-32">
+        {/* Character body */}
+        <svg viewBox="0 0 200 200" className="w-full h-full animate-bounce-slow">
+          {/* Back spikes */}
+          <ellipse cx="100" cy="90" rx="25" ry="35" fill="#FF9DAF" transform="rotate(-20 100 90)"/>
+          <ellipse cx="110" cy="70" rx="25" ry="35" fill="#FF9DAF" transform="rotate(-10 110 70)"/>
+          <ellipse cx="120" cy="55" rx="25" ry="35" fill="#FF9DAF"/>
+          <ellipse cx="130" cy="70" rx="25" ry="35" fill="#FF9DAF" transform="rotate(10 130 70)"/>
+          
+          {/* Dino body */}
+          <ellipse cx="100" cy="120" rx="65" ry="55" fill="#7DD3C0"/>
+          
+          {/* Dino head */}
+          <ellipse cx="80" cy="85" rx="45" ry="40" fill="#7DD3C0"/>
+          
+          {/* Snout */}
+          <ellipse cx="50" cy="90" rx="25" ry="20" fill="#6BC4B0"/>
+          
+          {/* White belly on head */}
+          <ellipse cx="85" cy="95" rx="30" ry="25" fill="white"/>
+          
+          {/* Eyes */}
+          <circle cx="70" cy="80" r="4" fill="#2C3E50" className="animate-blink"/>
+          <circle cx="90" cy="80" r="4" fill="#2C3E50" className="animate-blink"/>
+          
+          {/* Eye sparkles */}
+          <circle cx="72" cy="78" r="1.5" fill="white"/>
+          <circle cx="92" cy="78" r="1.5" fill="white"/>
+          
+          {/* Cute blush */}
+          <ellipse cx="60" cy="95" rx="8" ry="5" fill="#FFB6C1" opacity="0.6"/>
+          <ellipse cx="95" cy="95" rx="8" ry="5" fill="#FFB6C1" opacity="0.6"/>
+          
+          {/* Smile */}
+          <path d="M 65 100 Q 75 108 85 100" stroke="#2C3E50" strokeWidth="2" fill="none" strokeLinecap="round"/>
+          
+          {/* Cute teeth */}
+          <rect x="48" y="105" width="6" height="8" fill="white" rx="1"/>
+          <rect x="56" y="105" width="6" height="8" fill="white" rx="1"/>
+          <rect x="64" y="105" width="6" height="8" fill="white" rx="1"/>
+          
+          {/* Arms */}
+          <ellipse cx="65" cy="125" rx="15" ry="25" fill="#7DD3C0"/>
+          <ellipse cx="135" cy="125" rx="15" ry="25" fill="#7DD3C0"/>
+          
+          {/* Paws */}
+          <ellipse cx="65" cy="145" rx="12" ry="8" fill="#6BC4B0"/>
+          <ellipse cx="135" cy="145" rx="12" ry="8" fill="#6BC4B0"/>
+          
+          {/* Tail */}
+          <ellipse cx="145" cy="130" rx="20" ry="30" fill="#7DD3C0" transform="rotate(30 145 130)"/>
+          <circle cx="158" cy="140" r="8" fill="#7DD3C0"/>
+        </svg>
+        
+        {/* Floating hearts around character */}
+        <Heart className="absolute -top-2 -right-2 text-pink-400 animate-ping" size={16} />
+        <Heart className="absolute -bottom-2 -left-2 text-red-400 animate-pulse" size={12} />
+      </div>
+    </div>
+  );
+};
+
+// Floating hearts animation component
+const FloatingHearts = () => {
+  const hearts = [
+    { delay: '0s', duration: '4s', left: '10%' },
+    { delay: '1s', duration: '5s', left: '25%' },
+    { delay: '2s', duration: '4.5s', left: '50%' },
+    { delay: '0.5s', duration: '5.5s', left: '75%' },
+    { delay: '1.5s', duration: '4s', left: '90%' }
+  ];
+
+  return (
+    <>
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        {hearts.map((heart, i) => (
+          <Heart
+            key={i}
+            className="absolute text-pink-300/20"
+            style={{
+              left: heart.left,
+              animation: `float-up ${heart.duration} ${heart.delay} infinite ease-in-out`,
+              bottom: '-50px'
+            }}
+            size={30}
+          />
+        ))}
+      </div>
+      <style>{`
+        @keyframes float-up {
+          0% {
+            transform: translateY(0) rotate(0deg);
+            opacity: 0;
+          }
+          10% {
+            opacity: 0.6;
+          }
+          90% {
+            opacity: 0.6;
+          }
+          100% {
+            transform: translateY(-100vh) rotate(360deg);
+            opacity: 0;
+          }
+        }
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        @keyframes float {
+          0%, 100% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-20px);
+          }
+        }
+        @keyframes bounce-slow {
+          0%, 100% {
+            transform: scale(1);
+          }
+          50% {
+            transform: scale(1.05);
+          }
+        }
+        @keyframes blink {
+          0%, 90%, 100% {
+            opacity: 1;
+          }
+          95% {
+            opacity: 0;
+          }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.8s ease-out;
+        }
+        .animate-float {
+          animation: float 3s ease-in-out infinite;
+        }
+        .animate-bounce-slow {
+          animation: bounce-slow 2s ease-in-out infinite;
+        }
+        .animate-blink {
+          animation: blink 4s ease-in-out infinite;
+        }
+      `}</style>
+    </>
+  );
+};
+// Floating hearts animation component
+
 
 const Dashboard = () => {
   const [conversations, setConversations] = useState([]);
@@ -90,20 +251,23 @@ const Dashboard = () => {
 
   if (showUpload || !dashboardData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-pink-800 to-red-800 p-8">
-        <div className="max-w-4xl mx-auto">
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-pink-800 to-red-800 p-8 relative overflow-hidden">
+        <FloatingHearts />
+        <FloatingCharacter />
+        <div className="max-w-4xl mx-auto relative z-10">
           <div className="text-center mb-12">
-            <h1 className="text-6xl font-bold text-white mb-4 flex items-center justify-center gap-4">
-              <Heart className="text-pink-300" size={60} />
-              Happy Boyfriends Day  lover boy
+            <h1 className="text-6xl font-bold text-white mb-4 flex items-center justify-center gap-4 animate-pulse">
+              <Heart className="text-pink-300 animate-bounce" size={60} />
+              Happy Boyfriends Day lover boy
+              <Heart className="text-pink-300 animate-bounce" style={{ animationDelay: '0.5s' }} size={60} />
             </h1>
-            <p className="text-pink-100 text-xl">Discover the story of your relationship through AI</p>
+            <p className="text-pink-100 text-xl animate-fade-in">Discover the story of your relationship through AI ✨</p>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 shadow-2xl border border-white/20">
+          <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 shadow-2xl border border-white/20 transform hover:scale-105 transition-all duration-300">
             <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
-              <Upload size={28} />
-              Upload Your Chat History
+              <Upload size={28} className="animate-bounce" />
+              Upload Your Chat History 💕
             </h2>
             
             <div className="mb-6">
@@ -138,7 +302,7 @@ const Dashboard = () => {
                     <button
                       key={conv.id}
                       onClick={() => selectConversation(conv.id)}
-                      className="w-full text-left p-4 bg-white/10 hover:bg-white/20 rounded-xl transition-all text-white"
+                      className="w-full text-left p-4 bg-white/10 hover:bg-white/20 rounded-xl transition-all text-white transform hover:scale-105"
                     >
                       <div className="font-semibold">{conv.title}</div>
                       <div className="text-sm text-pink-200">
@@ -203,20 +367,23 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-pink-800 to-red-800 p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-pink-800 to-red-800 p-8 relative overflow-hidden">
+      <FloatingHearts />
+      <FloatingCharacter />
+      <div className="max-w-7xl mx-auto relative z-10">
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-12 animate-fade-in">
           <h1 className="text-5xl font-bold text-white mb-2 flex items-center justify-center gap-4">
-            <Heart className="text-pink-300" size={48} />
+            <Heart className="text-pink-300 animate-pulse" size={48} />
             {conversation.person1_name} & {conversation.person2_name}
+            <Heart className="text-pink-300 animate-pulse" style={{ animationDelay: '1s' }} size={48} />
           </h1>
-          <p className="text-pink-100 text-lg">{conversation.title}</p>
+          <p className="text-pink-100 text-lg">{conversation.title} 💖</p>
           <button
             onClick={() => setShowUpload(true)}
-            className="mt-4 px-6 py-2 bg-white/20 hover:bg-white/30 rounded-full text-white transition-all"
+            className="mt-4 px-6 py-2 bg-white/20 hover:bg-white/30 rounded-full text-white transition-all transform hover:scale-110"
           >
-            Upload New Chat
+            Upload New Chat ✨
           </button>
         </div>
 
@@ -250,10 +417,10 @@ const Dashboard = () => {
 
         {/* AI Insights - NEW! */}
         {relationship_insights && (
-          <div className="bg-gradient-to-r from-indigo-500/20 to-purple-500/20 backdrop-blur-lg rounded-3xl p-8 mb-8 shadow-2xl border border-white/20">
+          <div className="bg-gradient-to-r from-indigo-500/20 to-purple-500/20 backdrop-blur-lg rounded-3xl p-8 mb-8 shadow-2xl border border-white/20 transform hover:scale-105 transition-all duration-300">
             <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
-              <Brain size={28} className="text-purple-300" />
-              AI-Powered Relationship Insights
+              <Brain size={28} className="text-purple-300 animate-pulse" />
+              AI-Powered Relationship Insights ✨
             </h2>
             <div className="bg-white/10 rounded-xl p-6">
               <p className="text-white text-lg leading-relaxed whitespace-pre-line">
@@ -264,10 +431,10 @@ const Dashboard = () => {
         )}
 
         {/* Sentiment Timeline */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 mb-8 shadow-2xl border border-white/20">
+        <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 mb-8 shadow-2xl border border-white/20 transform hover:scale-105 transition-all duration-300">
           <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
-            <TrendingUp size={28} />
-            Emotional Journey
+            <TrendingUp size={28} className="animate-bounce" />
+            Emotional Journey 💕
           </h2>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={sentimentData}>
@@ -285,10 +452,10 @@ const Dashboard = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           {/* Sentiment Distribution - NEW! */}
-          <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 shadow-2xl border border-white/20">
+          <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 shadow-2xl border border-white/20 transform hover:scale-105 transition-all duration-300">
             <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
-              <Smile size={28} />
-              Emotional Breakdown
+              <Smile size={28} className="animate-bounce" />
+              Emotional Breakdown 😊
             </h2>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
@@ -312,8 +479,8 @@ const Dashboard = () => {
           </div>
 
           {/* Topics */}
-          <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 shadow-2xl border border-white/20">
-            <h2 className="text-2xl font-bold text-white mb-6">What You Talk About</h2>
+          <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 shadow-2xl border border-white/20 transform hover:scale-105 transition-all duration-300">
+            <h2 className="text-2xl font-bold text-white mb-6">What You Talk About 💬</h2>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
@@ -337,10 +504,10 @@ const Dashboard = () => {
         </div>
 
         {/* Love Languages */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 mb-8 shadow-2xl border border-white/20">
+        <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 mb-8 shadow-2xl border border-white/20 transform hover:scale-105 transition-all duration-300">
           <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
-            <Heart size={28} className="text-pink-400" />
-            Love Languages Analysis ❤️
+            <Heart size={28} className="text-pink-400 animate-pulse" />
+            Love Languages Analysis ❤️💕
           </h2>
           <ResponsiveContainer width="100%" height={400}>
             <RadarChart data={radarArray}>
@@ -356,10 +523,10 @@ const Dashboard = () => {
 
         
        {/* Monthly Summaries */}
-<div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 shadow-2xl border border-white/20">
+<div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 shadow-2xl border border-white/20 transform hover:scale-105 transition-all duration-300">
   <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
-    <Calendar size={28} />
-    Monthly Relationship Journey
+    <Calendar size={28} className="animate-bounce" />
+    Monthly Relationship Journey 📅✨
   </h2>
   <div className="space-y-8">
     {summaries.map((summary, idx) => (
@@ -393,7 +560,7 @@ const Dashboard = () => {
                   const colorClass = colors[(parseInt(number) - 1) % colors.length];
                   
                   return (
-                    <div key={i} className={`${colorClass} border rounded-xl p-4 mb-3`}>
+                    <div key={i} className={`${colorClass} border rounded-xl p-4 mb-3 transform hover:scale-105 transition-all duration-300`}>
                       <div className="flex items-start gap-3">
                         <div className="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">
                           <span className="text-white font-bold text-sm">{number}</span>
@@ -420,7 +587,7 @@ const Dashboard = () => {
                   const colorClass = colors[(parseInt(number) - 1) % colors.length];
                   
                   return (
-                    <div key={i} className={`${colorClass} border rounded-xl p-4 mb-3`}>
+                    <div key={i} className={`${colorClass} border rounded-xl p-4 mb-3 transform hover:scale-105 transition-all duration-300`}>
                       <div className="flex items-start gap-3">
                         <div className="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">
                           <span className="text-white font-bold text-sm">{number.replace('.', '')}</span>
@@ -462,19 +629,19 @@ const Dashboard = () => {
         </div>
         {/* Stats Bar */}
         <div className="grid grid-cols-3 gap-3 mb-4">
-          <div className="bg-green-500/20 rounded-lg p-3 text-center">
+          <div className="bg-green-500/20 rounded-lg p-3 text-center transform hover:scale-110 transition-all duration-300">
             <div className="text-2xl font-bold text-green-300">
               {summary.sentiment_stats.positive}
             </div>
             <div className="text-xs text-green-200">Happy</div>
           </div>
-          <div className="bg-pink-500/20 rounded-lg p-3 text-center">
+          <div className="bg-pink-500/20 rounded-lg p-3 text-center transform hover:scale-110 transition-all duration-300">
             <div className="text-2xl font-bold text-pink-300">
               {summary.sentiment_stats.love}
             </div>
             <div className="text-xs text-pink-200">Love</div>
           </div>
-          <div className="bg-red-500/20 rounded-lg p-3 text-center">
+          <div className="bg-red-500/20 rounded-lg p-3 text-center transform hover:scale-110 transition-all duration-300">
             <div className="text-2xl font-bold text-red-300">
               {summary.fights?.length || 0}
             </div>
@@ -486,15 +653,15 @@ const Dashboard = () => {
         {summary.cute_moments && summary.cute_moments.length > 0 && (
           <div className="mb-4">
             <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
-              <Heart size={18} className="text-pink-400" />
-              Cute Moments
+              <Heart size={18} className="text-pink-400 animate-pulse" />
+              Cute Moments 💕
             </h4>
             <div className="space-y-2">
               {summary.cute_moments.map((moment, i) => (
-                <div key={i} className="bg-pink-500/10 border border-pink-400/20 rounded-lg p-3">
+                <div key={i} className="bg-pink-500/10 border border-pink-400/20 rounded-lg p-3 transform hover:scale-105 transition-all duration-300 hover:shadow-lg hover:shadow-pink-500/30">
                   <div className="flex justify-between items-start mb-1">
                     <span className="text-pink-300 font-semibold text-sm">
-                      {moment.sender}
+                      {moment.sender} 💖
                     </span>
                     <span className="text-pink-200 text-xs">{moment.date}</span>
                   </div>
@@ -547,10 +714,10 @@ const StatCard = ({ icon, label, value, color }) => {
   };
 
   return (
-    <div className={`bg-gradient-to-br ${colors[color]} rounded-2xl p-6 shadow-xl`}>
+    <div className={`bg-gradient-to-br ${colors[color]} rounded-2xl p-6 shadow-xl transform hover:scale-110 hover:rotate-2 transition-all duration-300 cursor-pointer`}>
       <div className="flex items-center justify-between mb-2">
-        <div className="text-white opacity-80">{icon}</div>
-        <div className="text-3xl font-bold text-white">{value}</div>
+        <div className="text-white opacity-80 animate-bounce">{icon}</div>
+        <div className="text-3xl font-bold text-white animate-pulse">{value}</div>
       </div>
       <div className="text-white text-sm font-medium">{label}</div>
     </div>
