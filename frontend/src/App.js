@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Heart, MessageCircle, TrendingUp, AlertTriangle, Calendar, Upload, Sparkles, Brain, Smile, Frown } from 'lucide-react';
 
-const API_BASE= 'https://hehehimi-relationship-insights.hf.space/';
+const API_BASE= 'https://hehehimi-relationship-insights.hf.space/api';
 // Cute floating character animation component
 const FloatingCharacter = () => {
   return (
