@@ -258,7 +258,7 @@ const Dashboard = () => {
           <div className="text-center mb-12">
             <h1 className="text-6xl font-bold text-white mb-4 flex items-center justify-center gap-4 animate-pulse">
               <Heart className="text-pink-300 animate-bounce" size={60} />
-              Happy Boyfriends Day lover boy
+              Relationship Analyser 
               <Heart className="text-pink-300 animate-bounce" style={{ animationDelay: '0.5s' }} size={60} />
             </h1>
             <p className="text-pink-100 text-xl animate-fade-in">Discover the story of your relationship through AI ✨</p>
